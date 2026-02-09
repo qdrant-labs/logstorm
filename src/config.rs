@@ -1,11 +1,24 @@
 use serde::{Deserialize, Serialize};
 
+use crate::sink::elasticsearch::ElasticSearchConfig;
+use crate::sink::qdrant::QdrantConfig;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "lowercase")]
+pub enum SinkConfig {
+    Stdout,
+    Qdrant(QdrantConfig),
+    #[serde(rename = "elasticsearch")]
+    ElasticSearch(ElasticSearchConfig),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmitterConfig {
     pub buffer_size: usize,
     pub flush_interval_ms: u64,
     pub run_duration_secs: u64,
     pub services: Vec<ServiceConfig>,
+    pub sinks: Vec<SinkConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,6 +42,7 @@ impl Default for EmitterConfig {
             buffer_size: 1000,
             flush_interval_ms: 5000,
             run_duration_secs: 30,
+            sinks: vec![SinkConfig::Stdout],
             services: vec![
                 ServiceConfig {
                     name: "api-gateway".into(),

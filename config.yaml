@@ -2,6 +2,19 @@ buffer_size: 1000
 flush_interval_ms: 5000
 run_duration_secs: 30
 
+sinks:
+  - type: stdout
+
+  # - type: qdrant
+  #   url: ${QDRANT_URL}
+  #   api_key: ${QDRANT_API_KEY}
+  #   collection_name: logs
+
+  # - type: elasticsearch
+  #   url: ${ELASTIC_URL}
+  #   api_key: ${ELASTIC_API_KEY}
+  #   index_name: logs
+
 services:
   - name: api-gateway
     rate_per_sec: 100.0

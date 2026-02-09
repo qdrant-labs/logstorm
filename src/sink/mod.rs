@@ -1,8 +1,10 @@
 use async_trait::async_trait;
-
 use tracing::{debug, error, info, warn};
 
 use crate::log_entry::LogEntry;
+
+pub mod elasticsearch;
+pub mod qdrant;
 
 #[async_trait]
 pub trait Sink: Send + Sync {
@@ -12,7 +14,6 @@ pub trait Sink: Send + Sync {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 }
 
-/// Prints a summary per flush. Swap this out for Elastic/Qdrant sinks later.
 pub struct StdoutSink;
 
 #[async_trait]
