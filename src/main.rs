@@ -5,11 +5,15 @@ use emitter::sink::{Sink, StdoutSink};
 use std::time::Duration;
 use tokio::sync::mpsc;
 
+use tracing::info;
+use tracing_subscriber::prelude::*;
+use tracing_subscriber::EnvFilter;
+
 fn load_config() -> EmitterConfig {
     match std::fs::read_to_string("config.yaml") {
         Ok(contents) => serde_yaml::from_str(&contents).expect("Invalid config.yaml"),
         Err(_) => {
-            println!("No config.yaml found, using defaults");
+            info!("No config.yaml found, using defaults");
             EmitterConfig::default()
         }
     }
@@ -20,7 +24,12 @@ async fn main() {
     let config = load_config();
     let duration = Duration::from_secs(config.run_duration_secs);
 
-    println!(
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(EnvFilter::from_default_env())
+        .init();
+
+    info!(
         "Starting emitter: {} services, {}s duration, buffer={}",
         config.services.len(),
         config.run_duration_secs,
@@ -49,5 +58,5 @@ async fn main() {
     );
     buffer.run().await;
 
-    println!("Done.");
+    info!("Done.");
 }
