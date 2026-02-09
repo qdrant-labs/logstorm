@@ -2,6 +2,7 @@ use crate::log_entry::LogEntry;
 use crate::sink::Sink;
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
+use tracing::info;
 
 pub struct Buffer {
     rx: mpsc::Receiver<LogEntry>,
@@ -65,5 +66,6 @@ impl Buffer {
                 eprintln!("Sink error: {e}");
             }
         }
+        info!("Flushed {} logs to {} sinks", batch.len(), self.sinks.len());
     }
 }

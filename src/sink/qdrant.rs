@@ -3,7 +3,6 @@ use qdrant_client::{Payload, Qdrant};
 use qdrant_client::qdrant::{CreateCollectionBuilder, CreateFieldIndexCollection, Distance, DocumentBuilder, FieldType, Modifier, NamedVectors, PointStruct, SparseVectorParamsBuilder, SparseVectorsConfigBuilder, UpsertPointsBuilder, VectorParamsBuilder, VectorsConfigBuilder};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
@@ -112,7 +111,7 @@ impl Sink for QdrantSink {
                 self.config.collection_name.clone(),
                 batch.iter().map(|entry| {
                     PointStruct::new(
-                        Uuid::new_v4().to_string(),
+                        entry.id.clone(),
                         NamedVectors::default()
                             .add_vector("dense", entry.embedding.clone())
                             .add_vector("bm25", DocumentBuilder::new(entry.message.clone(), "qdrant/bm25").build()),

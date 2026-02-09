@@ -46,24 +46,37 @@ fn load_config() -> EmitterConfig {
 }
 
 async fn build_sinks(sink_configs: &[SinkConfig]) -> Vec<Box<dyn Sink>> {
-    sink_configs
-        .iter()
-        .filter_map(|cfg| match cfg {
-            SinkConfig::Stdout => Some(Box::new(StdoutSink) as Box<dyn Sink>),
+    let mut sinks: Vec<Box<dyn Sink>> = Vec::new();
+    for cfg in sink_configs {
+        match cfg {
+            SinkConfig::Stdout {} => {
+                sinks.push(Box::new(StdoutSink));
+            }
             #[cfg(feature = "qdrant")]
-            SinkConfig::Qdrant(_qdrant_cfg) => {
-                // TODO: construct QdrantSink from config
-                info!("Qdrant sink configured but not yet implemented, skipping");
-                None
+            SinkConfig::Qdrant(qdrant_cfg) => {
+                use emitter::sink::qdrant::QdrantSink;
+                let qdrant_sink = QdrantSink::from_config(qdrant_cfg.to_owned()).await;
+                info!("Qdrant sink configured for collection '{}'", qdrant_cfg.collection_name);
+                sinks.push(Box::new(qdrant_sink));
             }
             #[cfg(feature = "elasticsearch")]
-            SinkConfig::ElasticSearch(_es_cfg) => {
-                // TODO: construct ElasticSearchSink from config
-                info!("Elasticsearch sink configured but not yet implemented, skipping");
-                None
+            SinkConfig::ElasticSearch(es_cfg) => {
+                use emitter::sink::elasticsearch::ElasticSearchSink;
+                let es_sink = ElasticSearchSink::from_config(es_cfg.to_owned()).await;
+                info!("Elasticsearch sink configured for index '{}'", es_cfg.index_name);
+                sinks.push(Box::new(es_sink));
             }
-        })
-        .collect()
+            #[cfg(feature = "dashboard")]
+            SinkConfig::Dashboard(dashboard_cfg) => {
+                use emitter::sink::dashboard::{DashboardSink, start_dashboard_server};
+                let (tx, _rx) = tokio::sync::broadcast::channel(100);
+                tokio::spawn(start_dashboard_server(dashboard_cfg.port, tx.clone()));
+                info!("Dashboard sink configured on port {}", dashboard_cfg.port);
+                sinks.push(Box::new(DashboardSink::new(tx)));
+            }
+        }
+    }
+    sinks
 }
 
 #[tokio::main]
@@ -112,6 +125,8 @@ async fn main() {
         config.buffer_size,
         Duration::from_millis(config.flush_interval_ms),
     );
+
+    info!("Emitter running for {} seconds...", config.run_duration_secs);
     buffer.run().await;
 
     info!("Done.");

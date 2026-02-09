@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "dashboard")]
+use crate::sink::dashboard::DashboardConfig;
 #[cfg(feature = "elasticsearch")]
 use crate::sink::elasticsearch::ElasticSearchConfig;
 #[cfg(feature = "qdrant")]
@@ -15,12 +17,14 @@ pub struct EmbeddingConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum SinkConfig {
-    Stdout,
+    Stdout {},
     #[cfg(feature = "qdrant")]
     Qdrant(QdrantConfig),
     #[cfg(feature = "elasticsearch")]
     #[serde(rename = "elasticsearch")]
     ElasticSearch(ElasticSearchConfig),
+    #[cfg(feature = "dashboard")]
+    Dashboard(DashboardConfig),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,7 +58,7 @@ impl Default for EmitterConfig {
             buffer_size: 1000,
             flush_interval_ms: 5000,
             run_duration_secs: 30,
-            sinks: vec![SinkConfig::Stdout],
+            sinks: vec![SinkConfig::Stdout {}],
             embedding: EmbeddingConfig {
                 api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
                 model: "text-embedding-3-small".into(),

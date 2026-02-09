@@ -7,6 +7,8 @@ use crate::log_entry::LogEntry;
 pub mod qdrant;
 #[cfg(feature = "elasticsearch")]
 pub mod elasticsearch;
+#[cfg(feature = "dashboard")]
+pub mod dashboard;
 
 #[async_trait]
 pub trait Sink: Send + Sync {

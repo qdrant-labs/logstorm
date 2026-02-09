@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use async_openai::config::OpenAIConfig;
-use async_openai::types::{CreateEmbeddingRequestArgs, EmbeddingInput};
+use async_openai::types::embeddings::{CreateEmbeddingRequestArgs, EmbeddingInput};
 use async_openai::Client as OpenAiClient;
 use tracing::info;
 
@@ -49,7 +49,7 @@ impl EmbeddingService {
         for (i, embedding) in response.data.iter().enumerate() {
             map.insert(
                 messages[i].to_string(),
-                embedding.embedding.iter().map(|&v| v as f32).collect(),
+                embedding.embedding.to_vec(),
             );
         }
 
