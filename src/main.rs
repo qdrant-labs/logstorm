@@ -6,8 +6,8 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 
 use tracing::info;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 
 fn load_config() -> EmitterConfig {
     match std::fs::read_to_string("config.yaml") {
