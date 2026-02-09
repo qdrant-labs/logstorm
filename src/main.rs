@@ -19,7 +19,12 @@ fn expand_env_vars(input: &str) -> String {
         };
         let var_name = &result[start + 2..start + end];
         let value = std::env::var(var_name).unwrap_or_default();
-        result = format!("{}{}{}", &result[..start], value, &result[start + end + 1..]);
+        result = format!(
+            "{}{}{}",
+            &result[..start],
+            value,
+            &result[start + end + 1..]
+        );
     }
     result
 }
