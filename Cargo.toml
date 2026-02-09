@@ -9,6 +9,7 @@ chrono = { version = "0.4", features = ["serde"] }
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+serde_json = "1.0.149"
 tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
@@ -17,6 +18,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # sdks for sinks (optional, enable via features)
 qdrant-client = { package = "qdrant-client", version = "1.16", optional = true }
 elasticsearch = { version = "9.1.0-alpha.1", optional = true }
+async-openai = { version = "0.32.4", features = ["embedding"] }
+
 
 [features]
 default = []

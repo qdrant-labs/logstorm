@@ -1,13 +1,16 @@
-use emitter::buffer::Buffer;
-use emitter::config::{EmitterConfig, SinkConfig};
-use emitter::emitter::emit_logs;
-use emitter::sink::{Sink, StdoutSink};
+use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::mpsc;
 
+use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
+
+use emitter::buffer::Buffer;
+use emitter::config::{EmitterConfig, SinkConfig};
+use emitter::embedding::EmbeddingService;
+use emitter::emitter::{emit_logs, MESSAGES};
+use emitter::sink::{Sink, StdoutSink};
 
 /// Expand `${VAR_NAME}` patterns in a string with environment variable values.
 /// Unknown vars become empty strings.
@@ -42,16 +45,18 @@ fn load_config() -> EmitterConfig {
     }
 }
 
-fn build_sinks(sink_configs: &[SinkConfig]) -> Vec<Box<dyn Sink>> {
+async fn build_sinks(sink_configs: &[SinkConfig]) -> Vec<Box<dyn Sink>> {
     sink_configs
         .iter()
         .filter_map(|cfg| match cfg {
             SinkConfig::Stdout => Some(Box::new(StdoutSink) as Box<dyn Sink>),
+            #[cfg(feature = "qdrant")]
             SinkConfig::Qdrant(_qdrant_cfg) => {
                 // TODO: construct QdrantSink from config
                 info!("Qdrant sink configured but not yet implemented, skipping");
                 None
             }
+            #[cfg(feature = "elasticsearch")]
             SinkConfig::ElasticSearch(_es_cfg) => {
                 // TODO: construct ElasticSearchSink from config
                 info!("Elasticsearch sink configured but not yet implemented, skipping");
@@ -79,14 +84,24 @@ async fn main() {
         config.buffer_size,
     );
 
-    let sinks = build_sinks(&config.sinks);
+    // Embed all messages once at startup
+    let embedding_service = EmbeddingService::from_config(config.embedding.clone());
+    let embeddings = Arc::new(
+        embedding_service
+            .embed_all(MESSAGES)
+            .await
+            .expect("Failed to generate embeddings"),
+    );
+
+    let sinks = build_sinks(&config.sinks).await;
     let (tx, rx) = mpsc::channel(10_000);
 
     for service in &config.services {
         let tx = tx.clone();
         let service = service.clone();
+        let embeddings = Arc::clone(&embeddings);
         tokio::spawn(async move {
-            emit_logs(service, tx, duration).await;
+            emit_logs(service, tx, duration, embeddings).await;
         });
     }
     drop(tx);

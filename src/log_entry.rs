@@ -28,4 +28,5 @@ pub struct LogEntry {
     pub service: String,
     pub level: LogLevel,
     pub message: String,
+    pub embedding: Vec<f32>,
 }

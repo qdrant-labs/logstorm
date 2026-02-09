@@ -1,13 +1,24 @@
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "elasticsearch")]
 use crate::sink::elasticsearch::ElasticSearchConfig;
+#[cfg(feature = "qdrant")]
 use crate::sink::qdrant::QdrantConfig;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbeddingConfig {
+    pub api_key: String,
+    pub model: String,
+    pub dimensions: Option<u32>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum SinkConfig {
     Stdout,
+    #[cfg(feature = "qdrant")]
     Qdrant(QdrantConfig),
+    #[cfg(feature = "elasticsearch")]
     #[serde(rename = "elasticsearch")]
     ElasticSearch(ElasticSearchConfig),
 }
@@ -19,6 +30,7 @@ pub struct EmitterConfig {
     pub run_duration_secs: u64,
     pub services: Vec<ServiceConfig>,
     pub sinks: Vec<SinkConfig>,
+    pub embedding: EmbeddingConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,6 +55,11 @@ impl Default for EmitterConfig {
             flush_interval_ms: 5000,
             run_duration_secs: 30,
             sinks: vec![SinkConfig::Stdout],
+            embedding: EmbeddingConfig {
+                api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
+                model: "text-embedding-3-small".into(),
+                dimensions: Some(1536),
+            },
             services: vec![
                 ServiceConfig {
                     name: "api-gateway".into(),

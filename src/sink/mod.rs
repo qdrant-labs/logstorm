@@ -3,8 +3,10 @@ use tracing::{debug, error, info, warn};
 
 use crate::log_entry::LogEntry;
 
-pub mod elasticsearch;
+#[cfg(feature = "qdrant")]
 pub mod qdrant;
+#[cfg(feature = "elasticsearch")]
+pub mod elasticsearch;
 
 #[async_trait]
 pub trait Sink: Send + Sync {
@@ -14,6 +16,8 @@ pub trait Sink: Send + Sync {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 }
 
+/// A simple sink that writes logs to stdout using the `tracing` crate. Its
+/// really jusr for testing and demonstration purposes, but it can be useful for debugging
 pub struct StdoutSink;
 
 #[async_trait]
