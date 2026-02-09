@@ -116,7 +116,7 @@ pub async fn emit_logs(
     let start = Instant::now();
     let mean_interval_ms = 1000.0 / service.rate_per_sec;
 
-    while start.elapsed() < duration {
+    while duration.is_zero() || start.elapsed() < duration {
         let log = generate_log(&service, &mut rng, &embeddings);
         if tx.send(log).await.is_err() {
             break;

@@ -45,7 +45,8 @@ fn load_config() -> EmitterConfig {
     }
 }
 
-async fn build_sinks(sink_configs: &[SinkConfig]) -> Vec<Box<dyn Sink>> {
+#[allow(unused_variables)]
+async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<Box<dyn Sink>> {
     let mut sinks: Vec<Box<dyn Sink>> = Vec::new();
     for cfg in sink_configs {
         match cfg {
@@ -55,14 +56,14 @@ async fn build_sinks(sink_configs: &[SinkConfig]) -> Vec<Box<dyn Sink>> {
             #[cfg(feature = "qdrant")]
             SinkConfig::Qdrant(qdrant_cfg) => {
                 use emitter::sink::qdrant::QdrantSink;
-                let qdrant_sink = QdrantSink::from_config(qdrant_cfg.to_owned()).await;
+                let qdrant_sink = QdrantSink::from_config(qdrant_cfg.to_owned(), embedding_dim).await;
                 info!("Qdrant sink configured for collection '{}'", qdrant_cfg.collection_name);
                 sinks.push(Box::new(qdrant_sink));
             }
             #[cfg(feature = "elasticsearch")]
             SinkConfig::ElasticSearch(es_cfg) => {
                 use emitter::sink::elasticsearch::ElasticSearchSink;
-                let es_sink = ElasticSearchSink::from_config(es_cfg.to_owned()).await;
+                let es_sink = ElasticSearchSink::from_config(es_cfg.to_owned(), embedding_dim).await;
                 info!("Elasticsearch sink configured for index '{}'", es_cfg.index_name);
                 sinks.push(Box::new(es_sink));
             }
@@ -97,16 +98,20 @@ async fn main() {
         config.buffer_size,
     );
 
-    // Embed all messages once at startup
-    let embedding_service = EmbeddingService::from_config(config.embedding.clone());
-    let embeddings = Arc::new(
-        embedding_service
-            .embed_all(MESSAGES)
-            .await
-            .expect("Failed to generate embeddings"),
-    );
+    // Embed all messages once at startup (fastembed is sync, so use spawn_blocking)
+    let embedding_config = config.embedding.clone();
+    let (embeddings, embedding_dim) = tokio::task::spawn_blocking(move || {
+        let service = EmbeddingService::from_config(&embedding_config);
+        let dim = service.dimension();
+        let map = service.embed_all(MESSAGES).expect("Failed to generate embeddings");
+        (map, dim)
+    })
+    .await
+    .expect("Embedding task panicked");
+    let embeddings = Arc::new(embeddings);
 
-    let sinks = build_sinks(&config.sinks).await;
+    info!("Embedding dimension: {}", embedding_dim);
+    let sinks = build_sinks(&config.sinks, embedding_dim).await;
     let (tx, rx) = mpsc::channel(10_000);
 
     for service in &config.services {

@@ -6,9 +6,14 @@ use serde_json::json;
 
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
+use crate::sink::{
+    DEFAULT_INDEX_NAME,
+    DENSE_EMBEDDING_NAME,
+    SPARSE_EMBEDDING_NAME,
+};
 
 fn default_collection_name() -> String {
-    "logs".to_string()
+    DEFAULT_INDEX_NAME.to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -25,7 +30,7 @@ pub struct QdrantSink {
 }
 
 impl QdrantSink {
-    pub async fn from_config(config: QdrantConfig) -> Self {
+    pub async fn from_config(config: QdrantConfig, embedding_dim: usize) -> Self {
         let mut qbuilder = Qdrant::from_url(&config.url);
         
         // grab api key from config if provided and set it on the builder
@@ -50,13 +55,13 @@ impl QdrantSink {
 
             let mut vectors_config = VectorsConfigBuilder::default();
             vectors_config.add_named_vector_params(
-                "dense",
-                VectorParamsBuilder::new(1536, Distance::Cosine)
+                DENSE_EMBEDDING_NAME,
+                VectorParamsBuilder::new(embedding_dim as u64, Distance::Cosine)
             );
 
             let mut sparse_vectors_config = SparseVectorsConfigBuilder::default();
             sparse_vectors_config.add_named_vector_params(
-                "bm25",
+                SPARSE_EMBEDDING_NAME,
                 // use the IDF modifier for BM25
                 SparseVectorParamsBuilder::default().modifier(Modifier::Idf), 
             );
@@ -113,8 +118,8 @@ impl Sink for QdrantSink {
                     PointStruct::new(
                         entry.id.clone(),
                         NamedVectors::default()
-                            .add_vector("dense", entry.embedding.clone())
-                            .add_vector("bm25", DocumentBuilder::new(entry.message.clone(), "qdrant/bm25").build()),
+                            .add_vector(DENSE_EMBEDDING_NAME, entry.embedding.clone())
+                            .add_vector(SPARSE_EMBEDDING_NAME, DocumentBuilder::new(entry.message.clone(), "qdrant/bm25").build()),
                             Payload::try_from(json!({
                                 "service": entry.service.clone(),
                                 "level": format!("{:?}", entry.level),

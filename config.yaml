@@ -1,11 +1,9 @@
 buffer_size: 1000
 flush_interval_ms: 5000
-run_duration_secs: 60 # one minute
+run_duration_secs: 0 # 0 means run indefinitely
 
 embedding:
-  api_key: ${OPENAI_API_KEY}
-  model: text-embedding-3-small
-  dimensions: 1536
+  model: BAAI/bge-small-en-v1.5
 
 sinks:
   # - type: stdout
@@ -25,7 +23,7 @@ sinks:
 
 services:
   - name: api-gateway
-    rate_per_sec: 100.0
+    rate_per_sec: 3000.0
     level_weights:
       debug: 0.1
       info: 0.7
@@ -33,7 +31,7 @@ services:
       error: 0.05
 
   - name: auth-service
-    rate_per_sec: 50.0
+    rate_per_sec: 500.0
     level_weights:
       debug: 0.05
       info: 0.6
@@ -41,7 +39,7 @@ services:
       error: 0.15
 
   - name: payment-service
-    rate_per_sec: 30.0
+    rate_per_sec: 300.0
     level_weights:
       debug: 0.05
       info: 0.5
@@ -49,7 +47,7 @@ services:
       error: 0.2
 
   - name: user-service
-    rate_per_sec: 40.0
+    rate_per_sec: 400.0
     level_weights:
       debug: 0.1
       info: 0.65

@@ -7,9 +7,13 @@ use serde_json::json;
 
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
+use crate::sink::{
+    DEFAULT_INDEX_NAME,
+    DENSE_EMBEDDING_NAME
+};
 
 fn default_index_name() -> String {
-    "logs".to_string()
+    DEFAULT_INDEX_NAME.to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,7 +31,7 @@ pub struct ElasticSearchSink {
 }
 
 impl ElasticSearchSink {
-    pub async fn from_config(config: ElasticSearchConfig) -> Self {
+    pub async fn from_config(config: ElasticSearchConfig, embedding_dim: usize) -> Self {
 
         // build the Elasticsearch client
         let credentials = Credentials::Basic(config.user.clone(), config.password.clone());
@@ -59,9 +63,13 @@ impl ElasticSearchSink {
                             "service": { "type": "keyword" },
                             "level": { "type": "keyword" },
                             "message": { "type": "text" },
-                            "embedding": { 
+                            DENSE_EMBEDDING_NAME: {
                                 "type": "dense_vector",
-                                "dims": 1536
+                                "dims": embedding_dim,
+                                "index": true,
+                                "index_options": {
+                                    "type": "hnsw",
+                                }
                             }
                         }
                     }
@@ -90,7 +98,7 @@ impl Sink for ElasticSearchSink {
                     "service": entry.service,
                     "level": format!("{:?}", entry.level),
                     "message": entry.message,
-                    "embedding": entry.embedding,
+                    DENSE_EMBEDDING_NAME: entry.embedding,
                 })).id(&id).routing(&id).into()
             })
             .collect::<Vec<BulkOperation<_>>>();

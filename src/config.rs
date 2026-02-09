@@ -7,11 +7,14 @@ use crate::sink::elasticsearch::ElasticSearchConfig;
 #[cfg(feature = "qdrant")]
 use crate::sink::qdrant::QdrantConfig;
 
+fn default_embedding_model() -> String {
+    "BAAI/bge-small-en-v1.5".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingConfig {
-    pub api_key: String,
+    #[serde(default = "default_embedding_model")]
     pub model: String,
-    pub dimensions: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,9 +63,7 @@ impl Default for EmitterConfig {
             run_duration_secs: 30,
             sinks: vec![SinkConfig::Stdout {}],
             embedding: EmbeddingConfig {
-                api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
-                model: "text-embedding-3-small".into(),
-                dimensions: Some(1536),
+                model: default_embedding_model(),
             },
             services: vec![
                 ServiceConfig {

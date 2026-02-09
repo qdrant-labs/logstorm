@@ -3,6 +3,10 @@ use tracing::{debug, error, info, warn};
 
 use crate::log_entry::LogEntry;
 
+const DEFAULT_INDEX_NAME: &str = "logs";
+const DENSE_EMBEDDING_NAME: &str = "dense";
+const SPARSE_EMBEDDING_NAME: &str = "bm25";
+
 #[cfg(feature = "qdrant")]
 pub mod qdrant;
 #[cfg(feature = "elasticsearch")]
