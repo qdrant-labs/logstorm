@@ -7,12 +7,12 @@ const DEFAULT_INDEX_NAME: &str = "logs";
 const DENSE_EMBEDDING_NAME: &str = "dense";
 const SPARSE_EMBEDDING_NAME: &str = "bm25";
 
-#[cfg(feature = "qdrant")]
-pub mod qdrant;
-#[cfg(feature = "elasticsearch")]
-pub mod elasticsearch;
 #[cfg(feature = "dashboard")]
 pub mod dashboard;
+#[cfg(feature = "elasticsearch")]
+pub mod elasticsearch;
+#[cfg(feature = "qdrant")]
+pub mod qdrant;
 
 #[async_trait]
 pub trait Sink: Send + Sync {

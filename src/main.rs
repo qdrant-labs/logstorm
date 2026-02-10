@@ -69,15 +69,23 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
             #[cfg(feature = "qdrant")]
             SinkConfig::Qdrant(qdrant_cfg) => {
                 use emitter::sink::qdrant::QdrantSink;
-                let qdrant_sink = QdrantSink::from_config(qdrant_cfg.to_owned(), embedding_dim).await;
-                info!("Qdrant sink configured for collection '{}'", qdrant_cfg.collection_name);
+                let qdrant_sink =
+                    QdrantSink::from_config(qdrant_cfg.to_owned(), embedding_dim).await;
+                info!(
+                    "Qdrant sink configured for collection '{}'",
+                    qdrant_cfg.collection_name
+                );
                 sinks.push(Box::new(qdrant_sink));
             }
             #[cfg(feature = "elasticsearch")]
             SinkConfig::ElasticSearch(es_cfg) => {
                 use emitter::sink::elasticsearch::ElasticSearchSink;
-                let es_sink = ElasticSearchSink::from_config(es_cfg.to_owned(), embedding_dim).await;
-                info!("Elasticsearch sink configured for index '{}'", es_cfg.index_name);
+                let es_sink =
+                    ElasticSearchSink::from_config(es_cfg.to_owned(), embedding_dim).await;
+                info!(
+                    "Elasticsearch sink configured for index '{}'",
+                    es_cfg.index_name
+                );
                 sinks.push(Box::new(es_sink));
             }
             #[cfg(feature = "dashboard")]
@@ -156,7 +164,10 @@ async fn main() {
         Duration::from_millis(config.flush_interval_ms),
     );
 
-    info!("Emitter running for {} seconds...", config.run_duration_secs);
+    info!(
+        "Emitter running for {} seconds...",
+        config.run_duration_secs
+    );
     buffer.run().await;
 
     info!("Done.");

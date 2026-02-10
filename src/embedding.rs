@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
+use async_openai::Client as OpenAiClient;
 use async_openai::config::OpenAIConfig;
 use async_openai::types::embeddings::{CreateEmbeddingRequestArgs, EmbeddingInput};
-use async_openai::Client as OpenAiClient;
 use serde::de;
-use tracing::{info, debug};
+use tracing::{debug, info};
 use tracing_subscriber::field::debug;
 
 use crate::config::EmbeddingConfig;
@@ -40,18 +40,18 @@ impl EmbeddingService {
         for batch in messages.chunks(batch_size) {
             debug!("Embedding batch of {} messages", batch.len());
             debug!("Batch messages: {:?}", batch);
-            
+
             let mut request = CreateEmbeddingRequestArgs::default();
             request
-            .model(&self.config.model)
-            .input(EmbeddingInput::StringArray(batch.to_vec()))
-            .dimensions(self.config.dimensions);
+                .model(&self.config.model)
+                .input(EmbeddingInput::StringArray(batch.to_vec()))
+                .dimensions(self.config.dimensions);
 
             let request = request.build()?;
             let response = self.client.embeddings().create(request).await?;
 
             for (i, embedding) in response.data.iter().enumerate() {
-            map.insert(batch[i].clone(), embedding.embedding.to_vec());
+                map.insert(batch[i].clone(), embedding.embedding.to_vec());
             }
 
             debug!("Embedded batch of {} messages", batch.len());

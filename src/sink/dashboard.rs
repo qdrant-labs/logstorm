@@ -55,9 +55,7 @@ impl Sink for DashboardSink {
 
         for entry in batch {
             *by_service.entry(entry.service.clone()).or_default() += 1;
-            *by_level
-                .entry(format!("{}", entry.level))
-                .or_default() += 1;
+            *by_level.entry(format!("{}", entry.level)).or_default() += 1;
         }
 
         let event = FlushEvent {
@@ -87,7 +85,9 @@ pub async fn start_dashboard_server(port: u16, tx: broadcast::Sender<FlushEvent>
         .await
         .expect("Failed to bind dashboard server");
 
-    axum::serve(listener, app).await.expect("Dashboard server error");
+    axum::serve(listener, app)
+        .await
+        .expect("Dashboard server error");
 }
 
 async fn index_handler() -> impl IntoResponse {

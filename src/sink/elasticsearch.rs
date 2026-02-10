@@ -1,16 +1,15 @@
 use async_trait::async_trait;
 use elasticsearch::{
-    BulkOperation, BulkParts, Elasticsearch as EsClient, auth::Credentials, http::transport::{SingleNodeConnectionPool, TransportBuilder}
+    BulkOperation, BulkParts, Elasticsearch as EsClient,
+    auth::Credentials,
+    http::transport::{SingleNodeConnectionPool, TransportBuilder},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
-use crate::sink::{
-    DEFAULT_INDEX_NAME,
-    DENSE_EMBEDDING_NAME
-};
+use crate::sink::{DEFAULT_INDEX_NAME, DENSE_EMBEDDING_NAME};
 
 fn default_index_name() -> String {
     DEFAULT_INDEX_NAME.to_string()
@@ -32,7 +31,6 @@ pub struct ElasticSearchSink {
 
 impl ElasticSearchSink {
     pub async fn from_config(config: ElasticSearchConfig, embedding_dim: usize) -> Self {
-
         // build the Elasticsearch client
         let credentials = Credentials::Basic(config.user.clone(), config.password.clone());
         let conn_pool = SingleNodeConnectionPool::new(config.url.clone().parse().unwrap());
@@ -41,21 +39,25 @@ impl ElasticSearchSink {
             .build()
             .expect("Failed to create Elasticsearch transport");
         let client = EsClient::new(transport);
-        
+
         // create the index if it doesn't exist
         let index_exists = client
             .indices()
-            .exists(elasticsearch::indices::IndicesExistsParts::Index(&[&config.index_name]))
+            .exists(elasticsearch::indices::IndicesExistsParts::Index(&[
+                &config.index_name,
+            ]))
             .send()
             .await
             .expect("Failed to check if index exists")
             .status_code()
-            == 200; 
+            == 200;
 
         if !index_exists {
             client
                 .indices()
-                .create(elasticsearch::indices::IndicesCreateParts::Index(&config.index_name))
+                .create(elasticsearch::indices::IndicesCreateParts::Index(
+                    &config.index_name,
+                ))
                 .body(json!({
                     "mappings": {
                         "properties": {
@@ -99,7 +101,10 @@ impl Sink for ElasticSearchSink {
                     "level": format!("{:?}", entry.level),
                     "message": entry.message,
                     DENSE_EMBEDDING_NAME: entry.embedding,
-                })).id(&id).routing(&id).into()
+                }))
+                .id(&id)
+                .routing(&id)
+                .into()
             })
             .collect::<Vec<BulkOperation<_>>>();
 
