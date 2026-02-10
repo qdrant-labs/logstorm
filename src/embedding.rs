@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use async_openai::config::OpenAIConfig;
 use async_openai::types::embeddings::{CreateEmbeddingRequestArgs, EmbeddingInput};
 use async_openai::Client as OpenAiClient;
-use tracing::info;
+use serde::de;
+use tracing::{info, debug};
+use tracing_subscriber::field::debug;
 
 use crate::config::EmbeddingConfig;
 
@@ -32,18 +34,27 @@ impl EmbeddingService {
             self.config.dimensions,
         );
 
-        let mut request = CreateEmbeddingRequestArgs::default();
-        request
+        let mut map = HashMap::with_capacity(messages.len());
+        let batch_size = 20; // OpenAI's typical batch limit
+
+        for batch in messages.chunks(batch_size) {
+            debug!("Embedding batch of {} messages", batch.len());
+            debug!("Batch messages: {:?}", batch);
+            
+            let mut request = CreateEmbeddingRequestArgs::default();
+            request
             .model(&self.config.model)
-            .input(EmbeddingInput::StringArray(messages.to_vec()))
+            .input(EmbeddingInput::StringArray(batch.to_vec()))
             .dimensions(self.config.dimensions);
 
-        let request = request.build()?;
-        let response = self.client.embeddings().create(request).await?;
+            let request = request.build()?;
+            let response = self.client.embeddings().create(request).await?;
 
-        let mut map = HashMap::with_capacity(messages.len());
-        for (i, embedding) in response.data.iter().enumerate() {
-            map.insert(messages[i].clone(), embedding.embedding.to_vec());
+            for (i, embedding) in response.data.iter().enumerate() {
+            map.insert(batch[i].clone(), embedding.embedding.to_vec());
+            }
+
+            debug!("Embedded batch of {} messages", batch.len());
         }
 
         info!("Embedded {} messages successfully", map.len());
