@@ -25,7 +25,7 @@ fn default_password() -> String {
 }
 
 fn default_database() -> String {
-    "logs".to_string()
+    "postgres".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
