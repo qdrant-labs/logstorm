@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use clap::Parser;
 use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
@@ -11,6 +12,18 @@ use emitter::config::{EmitterConfig, SinkConfig};
 use emitter::embedding::EmbeddingService;
 use emitter::emitter::{emit_logs, MESSAGES};
 use emitter::sink::{Sink, StdoutSink};
+
+#[derive(Parser)]
+#[command(name = "emitter", about = "Synthetic log emitter")]
+struct Args {
+    /// Path to config file
+    #[arg(short, long, default_value = "config.yaml")]
+    config: String,
+
+    /// Override run_duration_secs from config
+    #[arg(long)]
+    duration_secs: Option<u64>,
+}
 
 /// Expand `${VAR_NAME}` patterns in a string with environment variable values.
 /// Unknown vars become empty strings.
@@ -32,14 +45,14 @@ fn expand_env_vars(input: &str) -> String {
     result
 }
 
-fn load_config() -> EmitterConfig {
-    match std::fs::read_to_string("config.yaml") {
+fn load_config(path: &str) -> EmitterConfig {
+    match std::fs::read_to_string(path) {
         Ok(contents) => {
             let expanded = expand_env_vars(&contents);
-            serde_yaml::from_str(&expanded).expect("Invalid config.yaml")
+            serde_yaml::from_str(&expanded).unwrap_or_else(|e| panic!("Invalid {path}: {e}"))
         }
         Err(_) => {
-            info!("No config.yaml found, using defaults");
+            info!("No {path} found, using defaults");
             EmitterConfig::default()
         }
     }
@@ -87,7 +100,11 @@ async fn main() {
         .with(EnvFilter::from_default_env())
         .init();
 
-    let config = load_config();
+    let args = Args::parse();
+    let mut config = load_config(&args.config);
+    if let Some(d) = args.duration_secs {
+        config.run_duration_secs = d;
+    }
     let duration = Duration::from_secs(config.run_duration_secs);
 
     info!(
