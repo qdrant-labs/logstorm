@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::sink::dashboard::DashboardConfig;
 #[cfg(feature = "elasticsearch")]
 use crate::sink::elasticsearch::ElasticSearchConfig;
+#[cfg(feature = "pgvector")]
+use crate::sink::pgvector::PgvectorConfig;
 #[cfg(feature = "qdrant")]
 use crate::sink::qdrant::QdrantConfig;
 
@@ -37,6 +39,8 @@ pub enum SinkConfig {
     #[cfg(feature = "elasticsearch")]
     #[serde(rename = "elasticsearch")]
     ElasticSearch(ElasticSearchConfig),
+    #[cfg(feature = "pgvector")]
+    Pgvector(PgvectorConfig),
     #[cfg(feature = "dashboard")]
     Dashboard(DashboardConfig),
 }

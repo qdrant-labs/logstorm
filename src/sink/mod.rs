@@ -13,6 +13,8 @@ pub mod dashboard;
 pub mod elasticsearch;
 #[cfg(feature = "qdrant")]
 pub mod qdrant;
+#[cfg(feature = "pgvector")]
+pub mod pgvector;
 
 #[async_trait]
 pub trait Sink: Send + Sync {

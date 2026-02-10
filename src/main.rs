@@ -88,6 +88,17 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
                 );
                 sinks.push(Box::new(es_sink));
             }
+            #[cfg(feature = "pgvector")]
+            SinkConfig::Pgvector(pg_cfg) => {
+                use emitter::sink::pgvector::PgvectorSink;
+                let pg_sink =
+                    PgvectorSink::from_config(pg_cfg.to_owned(), embedding_dim).await;
+                info!(
+                    "Pgvector sink configured for table '{}'",
+                    pg_cfg.table_name
+                );
+                sinks.push(Box::new(pg_sink));
+            }
             #[cfg(feature = "dashboard")]
             SinkConfig::Dashboard(dashboard_cfg) => {
                 use emitter::sink::dashboard::{DashboardSink, start_dashboard_server};
