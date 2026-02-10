@@ -3,7 +3,9 @@ flush_interval_ms: 5000
 run_duration_secs: 0 # 0 means run indefinitely
 
 embedding:
-  model: BAAI/bge-small-en-v1.5
+  api_key: ${OPENAI_API_KEY}
+  model: text-embedding-3-small
+  dimensions: 1536
 
 sinks:
   # - type: stdout

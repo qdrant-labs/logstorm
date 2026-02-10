@@ -10,7 +10,7 @@ use tracing_subscriber::prelude::*;
 use emitter::buffer::Buffer;
 use emitter::config::{EmitterConfig, SinkConfig};
 use emitter::embedding::EmbeddingService;
-use emitter::emitter::{emit_logs, MESSAGES};
+use emitter::emitter::{build_message_pool, emit_logs};
 use emitter::sink::{Sink, StdoutSink};
 
 #[derive(Parser)]
@@ -115,17 +115,24 @@ async fn main() {
         config.buffer_size,
     );
 
-    // Embed all messages once at startup (fastembed is sync, so use spawn_blocking)
-    let embedding_config = config.embedding.clone();
-    let (embeddings, embedding_dim) = tokio::task::spawn_blocking(move || {
-        let service = EmbeddingService::from_config(&embedding_config);
-        let dim = service.dimension();
-        let map = service.embed_all(MESSAGES).expect("Failed to generate embeddings");
-        (map, dim)
-    })
-    .await
-    .expect("Embedding task panicked");
-    let embeddings = Arc::new(embeddings);
+    // Build message pool from combinatorial generator
+    let pool = {
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::from_entropy();
+        build_message_pool(&mut rng, config.message_pool_size)
+    };
+    info!("Generated message pool of {} unique messages", pool.len());
+
+    // Embed all pool messages via OpenAI
+    let embedding_service = EmbeddingService::from_config(config.embedding.clone());
+    let embedding_dim = config.embedding.dimensions as usize;
+    let embeddings = Arc::new(
+        embedding_service
+            .embed_all(&pool)
+            .await
+            .expect("Failed to generate embeddings"),
+    );
+    let pool = Arc::new(pool);
 
     info!("Embedding dimension: {}", embedding_dim);
     let sinks = build_sinks(&config.sinks, embedding_dim).await;
@@ -134,9 +141,10 @@ async fn main() {
     for service in &config.services {
         let tx = tx.clone();
         let service = service.clone();
+        let pool = Arc::clone(&pool);
         let embeddings = Arc::clone(&embeddings);
         tokio::spawn(async move {
-            emit_logs(service, tx, duration, embeddings).await;
+            emit_logs(service, tx, duration, pool, embeddings).await;
         });
     }
     drop(tx);

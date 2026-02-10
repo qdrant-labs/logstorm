@@ -7,14 +7,25 @@ use crate::sink::elasticsearch::ElasticSearchConfig;
 #[cfg(feature = "qdrant")]
 use crate::sink::qdrant::QdrantConfig;
 
+fn default_message_pool_size() -> usize {
+    10_000
+}
+
 fn default_embedding_model() -> String {
-    "BAAI/bge-small-en-v1.5".to_string()
+    "text-embedding-3-small".to_string()
+}
+
+fn default_embedding_dimensions() -> u32 {
+    1536
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EmbeddingConfig {
+    pub api_key: String,
     #[serde(default = "default_embedding_model")]
     pub model: String,
+    #[serde(default = "default_embedding_dimensions")]
+    pub dimensions: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +46,8 @@ pub struct EmitterConfig {
     pub buffer_size: usize,
     pub flush_interval_ms: u64,
     pub run_duration_secs: u64,
+    #[serde(default = "default_message_pool_size")]
+    pub message_pool_size: usize,
     pub services: Vec<ServiceConfig>,
     pub sinks: Vec<SinkConfig>,
     pub embedding: EmbeddingConfig,
@@ -61,9 +74,12 @@ impl Default for EmitterConfig {
             buffer_size: 1000,
             flush_interval_ms: 5000,
             run_duration_secs: 30,
+            message_pool_size: default_message_pool_size(),
             sinks: vec![SinkConfig::Stdout {}],
             embedding: EmbeddingConfig {
+                api_key: std::env::var("OPENAI_API_KEY").unwrap_or_default(),
                 model: default_embedding_model(),
+                dimensions: default_embedding_dimensions(),
             },
             services: vec![
                 ServiceConfig {
