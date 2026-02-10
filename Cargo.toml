@@ -22,6 +22,7 @@ clap = { version = "4", features = ["derive"] }
 async-openai = { version = "0.32.4", features = ["embedding"] }
 axum = { version = "0.8", features = ["ws"], optional = true }
 futures = { version = "0.3", optional = true }
+indicatif = "0.17"
 
 
 [features]

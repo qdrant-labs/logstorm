@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use async_openai::Client as OpenAiClient;
 use async_openai::config::OpenAIConfig;
 use async_openai::types::embeddings::{CreateEmbeddingRequestArgs, EmbeddingInput};
-use serde::de;
+use indicatif::{ProgressBar, ProgressStyle};
 use tracing::{debug, info};
-use tracing_subscriber::field::debug;
 
 use crate::config::EmbeddingConfig;
 
@@ -35,9 +34,20 @@ impl EmbeddingService {
         );
 
         let mut map = HashMap::with_capacity(messages.len());
-        let batch_size = 20; // OpenAI's typical batch limit
+        let batch_size = 1024; // OpenAI's typical batch limit
+        let total_batches = messages.len().div_ceil(batch_size);
 
-        for batch in messages.chunks(batch_size) {
+        let pb = ProgressBar::new(total_batches as u64);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos}/{len} batches ({msg})",
+            )
+            .unwrap()
+            .progress_chars("#>-"),
+        );
+        pb.set_message("embedding...");
+
+        for (batch_idx, batch) in messages.chunks(batch_size).enumerate() {
             debug!("Embedding batch of {} messages", batch.len());
             debug!("Batch messages: {:?}", batch);
 
@@ -54,9 +64,11 @@ impl EmbeddingService {
                 map.insert(batch[i].clone(), embedding.embedding.to_vec());
             }
 
-            debug!("Embedded batch of {} messages", batch.len());
+            pb.set_message(format!("{} embedded", map.len()));
+            pb.set_position((batch_idx + 1) as u64);
         }
 
+        pb.finish_with_message(format!("{} messages embedded", map.len()));
         info!("Embedded {} messages successfully", map.len());
         Ok(map)
     }
