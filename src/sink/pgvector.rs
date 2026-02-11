@@ -75,6 +75,7 @@ impl PgvectorSink {
                 service TEXT NOT NULL,
                 level TEXT NOT NULL,
                 message TEXT NOT NULL,
+                message_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', message)) STORED,
                 embedding vector({})
             )"#,
             config.table_name, embedding_dim,
@@ -94,6 +95,17 @@ impl PgvectorSink {
             .execute(&pool)
             .await
             .expect("Failed to create HNSW index");
+
+        // create a GIN index on the message column for full-text search
+        let create_fts_index = format!(
+            r#"CREATE INDEX IF NOT EXISTS {table}_message_idx
+               ON {table} USING GIN (message_tsv)"#,
+            table = config.table_name,
+        );
+        sqlx::query(&create_fts_index)
+            .execute(&pool)
+            .await
+            .expect("Failed to create GIN index");
 
         Self { config, pool }
     }
