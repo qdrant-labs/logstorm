@@ -5,6 +5,7 @@ edition = "2024"
 description = "A log emitter that generates synthetic log messages and writes them to a vector database for benchmarking purposes."
 license = "MIT"
 authors = ["Nathan LeRoy <nleroy917@gmail.com>"]
+homepage = "https://github.com/nleroy/es-qdrant-log-demo"
 
 [dependencies]
 async-trait = "0.1"
