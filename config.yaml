@@ -1,5 +1,5 @@
 buffer_size: 1000
-flush_interval_ms: 5000
+flush_interval_ms: 3000
 run_duration_secs: 0 # 0 means run indefinitely
 message_pool_size: 1000
 
