@@ -34,7 +34,7 @@ impl EmbeddingService {
         );
 
         let mut map = HashMap::with_capacity(messages.len());
-        let batch_size = 1024; // OpenAI's typical batch limit
+        let batch_size = 2048; // OpenAI's typical batch limit
         let total_batches = messages.len().div_ceil(batch_size);
 
         let pb = ProgressBar::new(total_batches as u64);

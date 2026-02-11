@@ -1,6 +1,7 @@
 buffer_size: 1000
 flush_interval_ms: 5000
 run_duration_secs: 0 # 0 means run indefinitely
+message_pool_size: 1000
 
 embedding:
   api_key: ${OPENAI_API_KEY}
@@ -9,28 +10,26 @@ embedding:
 
 sinks:
   # - type: stdout
-  # - type: dashboard
-  #   port: 3000
-  # - type: qdrant
-  #   url: ${QDRANT_URL}
-  #   api_key: ${QDRANT_API_KEY}
-  #   collection_name: logs
-  - type: pgvector
-    host: ${PGVECTOR_HOST}
-    user: ${PGVECTOR_USER}
-    password: ${PGVECTOR_PASSWORD}
-    table_name: logs
-  # - type: elasticsearch
-  #   url: ${ELASTIC_URL}
-  #   user: ${ELASTIC_USER}
-  #   password: ${ELASTIC_PASSWORD}
-  #   index_name: logs
+  - type: qdrant
+    url: ${QDRANT_URL}
+    api_key: ${QDRANT_API_KEY}
+    collection_name: logs
+  - type: elasticsearch
+    url: ${ELASTIC_URL}
+    user: ${ELASTIC_USER}
+    password: ${ELASTIC_PASSWORD}
+    index_name: logs
+  # - type: pgvector
+  #   host: ${PGVECTOR_HOST}
+  #   user: ${PGVECTOR_USER}
+  #   password: ${PGVECTOR_PASSWORD}
+  #   table_name: logs
   - type: dashboard
     port: 3000
 
 services:
   - name: api-gateway
-    rate_per_sec: 300.0
+    rate_per_sec: 30.0
     level_weights:
       debug: 0.1
       info: 0.7
@@ -38,7 +37,7 @@ services:
       error: 0.05
 
   - name: auth-service
-    rate_per_sec: 50.0
+    rate_per_sec: 10.0
     level_weights:
       debug: 0.05
       info: 0.6
@@ -46,7 +45,7 @@ services:
       error: 0.15
 
   - name: payment-service
-    rate_per_sec: 30.0
+    rate_per_sec: 3.0
     level_weights:
       debug: 0.05
       info: 0.5
