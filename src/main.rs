@@ -7,14 +7,14 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
 
-use emitter::buffer::Buffer;
-use emitter::config::{EmitterConfig, SinkConfig};
-use emitter::embedding::EmbeddingService;
-use emitter::emitter::{build_message_pool, emit_logs};
-use emitter::sink::{Sink, StdoutSink};
+use logstorm::buffer::Buffer;
+use logstorm::config::{EmitterConfig, SinkConfig};
+use logstorm::embedding::EmbeddingService;
+use logstorm::emitter::{build_message_pool, emit_logs};
+use logstorm::sink::{Sink, StdoutSink};
 
 #[derive(Parser)]
-#[command(name = "emitter", about = "Synthetic log emitter")]
+#[command(name = "logstorm", about = "Synthetic log emitter")]
 struct Args {
     /// Path to config file
     #[arg(short, long, default_value = "config.yaml")]
@@ -68,7 +68,7 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
             }
             #[cfg(feature = "qdrant")]
             SinkConfig::Qdrant(qdrant_cfg) => {
-                use emitter::sink::qdrant::QdrantSink;
+                use logstorm::sink::qdrant::QdrantSink;
                 let qdrant_sink =
                     QdrantSink::from_config(qdrant_cfg.to_owned(), embedding_dim).await;
                 info!(
@@ -79,7 +79,7 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
             }
             #[cfg(feature = "elasticsearch")]
             SinkConfig::ElasticSearch(es_cfg) => {
-                use emitter::sink::elasticsearch::ElasticSearchSink;
+                use logstorm::sink::elasticsearch::ElasticSearchSink;
                 let es_sink =
                     ElasticSearchSink::from_config(es_cfg.to_owned(), embedding_dim).await;
                 info!(
@@ -90,7 +90,7 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
             }
             #[cfg(feature = "pgvector")]
             SinkConfig::Pgvector(pg_cfg) => {
-                use emitter::sink::pgvector::PgvectorSink;
+                use logstorm::sink::pgvector::PgvectorSink;
                 let pg_sink =
                     PgvectorSink::from_config(pg_cfg.to_owned(), embedding_dim).await;
                 info!(
@@ -101,7 +101,7 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
             }
             #[cfg(feature = "dashboard")]
             SinkConfig::Dashboard(dashboard_cfg) => {
-                use emitter::sink::dashboard::{DashboardSink, start_dashboard_server};
+                use logstorm::sink::dashboard::{DashboardSink, start_dashboard_server};
                 let (tx, _rx) = tokio::sync::broadcast::channel(100);
                 tokio::spawn(start_dashboard_server(dashboard_cfg.port, tx.clone()));
                 info!("Dashboard sink configured on port {}", dashboard_cfg.port);

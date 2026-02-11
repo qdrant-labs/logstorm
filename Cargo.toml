@@ -1,5 +1,5 @@
 [package]
-name = "emitter"
+name = "logstorm"
 version = "0.1.0"
 edition = "2024"
 description = "A log emitter that generates synthetic log messages and writes them to a vector database for benchmarking purposes."

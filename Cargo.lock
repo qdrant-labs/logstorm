@@ -765,31 +765,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "emitter"
-version = "0.1.0"
-dependencies = [
- "async-openai",
- "async-trait",
- "axum 0.8.8",
- "chrono",
- "clap",
- "elasticsearch",
- "futures",
- "indicatif",
- "pgvector",
- "qdrant-client",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "serde_yaml",
- "sqlx",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
 name = "encode_unicode"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1576,6 +1551,31 @@ name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
+
+[[package]]
+name = "logstorm"
+version = "0.1.0"
+dependencies = [
+ "async-openai",
+ "async-trait",
+ "axum 0.8.8",
+ "chrono",
+ "clap",
+ "elasticsearch",
+ "futures",
+ "indicatif",
+ "pgvector",
+ "qdrant-client",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
 
 [[package]]
 name = "lru-slab"
