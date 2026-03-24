@@ -1,6 +1,6 @@
 [package]
 name = "logstorm"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "A log emitter that generates synthetic log messages and writes them to a vector database for benchmarking purposes."
 license = "MIT"
@@ -20,7 +20,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # sdks for sinks (optional, enable via features)
-qdrant-client = { package = "qdrant-client", version = "1.16", optional = true }
+qdrant-client = { package = "qdrant-client", version = "=1.16.0", optional = true }
 elasticsearch = { version = "9.1.0-alpha.1", optional = true }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "uuid"], optional = true }
 pgvector = { version = "0.4", features = ["sqlx"], optional = true }
