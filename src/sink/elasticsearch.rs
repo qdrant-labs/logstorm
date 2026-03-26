@@ -7,6 +7,7 @@ use elasticsearch::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use crate::config::IndexMode;
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
 use crate::sink::{DEFAULT_INDEX_NAME, DENSE_EMBEDDING_NAME};
@@ -22,6 +23,8 @@ pub struct ElasticSearchConfig {
     pub password: String,
     #[serde(default = "default_index_name")]
     pub index_name: String,
+    #[serde(default)]
+    pub index_mode: IndexMode,
 }
 
 pub struct ElasticSearchSink {
@@ -53,29 +56,33 @@ impl ElasticSearchSink {
             == 200;
 
         if !index_exists {
+            let mut properties = json!({
+                "timestamp": { "type": "date" },
+                "service": { "type": "keyword" },
+                "level": { "type": "keyword" },
+                "message": { "type": "text" },
+            });
+
+            if config.index_mode.needs_embeddings() {
+                properties.as_object_mut().unwrap().insert(
+                    DENSE_EMBEDDING_NAME.to_string(),
+                    json!({
+                        "type": "dense_vector",
+                        "dims": embedding_dim,
+                        "index": true,
+                        "index_options": {
+                            "type": "hnsw",
+                        }
+                    }),
+                );
+            }
+
             client
                 .indices()
                 .create(elasticsearch::indices::IndicesCreateParts::Index(
                     &config.index_name,
                 ))
-                .body(json!({
-                    "mappings": {
-                        "properties": {
-                            "timestamp": { "type": "date" },
-                            "service": { "type": "keyword" },
-                            "level": { "type": "keyword" },
-                            "message": { "type": "text" },
-                            DENSE_EMBEDDING_NAME: {
-                                "type": "dense_vector",
-                                "dims": embedding_dim,
-                                "index": true,
-                                "index_options": {
-                                    "type": "hnsw",
-                                }
-                            }
-                        }
-                    }
-                }))
+                .body(json!({ "mappings": { "properties": properties } }))
                 .send()
                 .await
                 .expect("Failed to create index");
@@ -87,24 +94,34 @@ impl ElasticSearchSink {
 
 #[async_trait]
 impl Sink for ElasticSearchSink {
+    fn supported_modes(&self) -> &[IndexMode] {
+        &[IndexMode::Vector, IndexMode::Keyword, IndexMode::Hybrid]
+    }
+
     async fn write(
         &self,
         batch: &[LogEntry],
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        let include_embedding = self.config.index_mode.needs_embeddings();
+
         let logs = batch
             .iter()
             .map(|entry| {
                 let id = entry.id.clone();
-                BulkOperation::index(json!({
+                let mut doc = json!({
                     "timestamp": entry.timestamp,
                     "service": entry.service,
                     "level": format!("{:?}", entry.level),
                     "message": entry.message,
-                    DENSE_EMBEDDING_NAME: entry.embedding,
-                }))
-                .id(&id)
-                .routing(&id)
-                .into()
+                });
+
+                if include_embedding {
+                    doc.as_object_mut()
+                        .unwrap()
+                        .insert(DENSE_EMBEDDING_NAME.to_string(), json!(entry.embedding));
+                }
+
+                BulkOperation::index(doc).id(&id).routing(&id).into()
             })
             .collect::<Vec<BulkOperation<_>>>();
 

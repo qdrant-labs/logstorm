@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
+use crate::config::IndexMode;
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
 use crate::sink::DEFAULT_INDEX_NAME;
@@ -41,6 +42,8 @@ pub struct PgvectorConfig {
     pub database: String,
     #[serde(default = "default_table_name")]
     pub table_name: String,
+    #[serde(default)]
+    pub index_mode: IndexMode,
 }
 
 pub struct PgvectorSink {
@@ -61,51 +64,69 @@ impl PgvectorSink {
             .await
             .expect("Failed to connect to Postgres");
 
-        // ensure pgvector extension is available
-        sqlx::query("CREATE EXTENSION IF NOT EXISTS vector")
-            .execute(&pool)
-            .await
-            .expect("Failed to create vector extension");
+        let include_vectors = config.index_mode.needs_embeddings();
+        let include_keyword = matches!(config.index_mode, IndexMode::Keyword | IndexMode::Hybrid);
 
-        // create table if it doesn't exist
+        if include_vectors {
+            sqlx::query("CREATE EXTENSION IF NOT EXISTS vector")
+                .execute(&pool)
+                .await
+                .expect("Failed to create vector extension");
+        }
+
+        // build CREATE TABLE dynamically based on index_mode
+        let mut columns = vec![
+            "id TEXT PRIMARY KEY".to_string(),
+            "timestamp TIMESTAMPTZ NOT NULL".to_string(),
+            "service TEXT NOT NULL".to_string(),
+            "level TEXT NOT NULL".to_string(),
+            "message TEXT NOT NULL".to_string(),
+        ];
+
+        if include_keyword {
+            columns.push(
+                "message_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', message)) STORED"
+                    .to_string(),
+            );
+        }
+
+        if include_vectors {
+            columns.push(format!("embedding vector({})", embedding_dim));
+        }
+
         let create_table = format!(
-            r#"CREATE TABLE IF NOT EXISTS {} (
-                id TEXT PRIMARY KEY,
-                timestamp TIMESTAMPTZ NOT NULL,
-                service TEXT NOT NULL,
-                level TEXT NOT NULL,
-                message TEXT NOT NULL,
-                message_tsv TSVECTOR GENERATED ALWAYS AS (to_tsvector('english', message)) STORED,
-                embedding vector({})
-            )"#,
-            config.table_name, embedding_dim,
+            "CREATE TABLE IF NOT EXISTS {} ({})",
+            config.table_name,
+            columns.join(", "),
         );
         sqlx::query(&create_table)
             .execute(&pool)
             .await
             .expect("Failed to create table");
 
-        // create an HNSW index on the embedding column for cosine similarity
-        let create_index = format!(
-            r#"CREATE INDEX IF NOT EXISTS {table}_embedding_idx
-               ON {table} USING hnsw (embedding vector_cosine_ops)"#,
-            table = config.table_name,
-        );
-        sqlx::query(&create_index)
-            .execute(&pool)
-            .await
-            .expect("Failed to create HNSW index");
+        if include_vectors {
+            let create_index = format!(
+                r#"CREATE INDEX IF NOT EXISTS {table}_embedding_idx
+                   ON {table} USING hnsw (embedding vector_cosine_ops)"#,
+                table = config.table_name,
+            );
+            sqlx::query(&create_index)
+                .execute(&pool)
+                .await
+                .expect("Failed to create HNSW index");
+        }
 
-        // create a GIN index on the message column for full-text search
-        let create_fts_index = format!(
-            r#"CREATE INDEX IF NOT EXISTS {table}_message_idx
-               ON {table} USING GIN (message_tsv)"#,
-            table = config.table_name,
-        );
-        sqlx::query(&create_fts_index)
-            .execute(&pool)
-            .await
-            .expect("Failed to create GIN index");
+        if include_keyword {
+            let create_fts_index = format!(
+                r#"CREATE INDEX IF NOT EXISTS {table}_message_idx
+                   ON {table} USING GIN (message_tsv)"#,
+                table = config.table_name,
+            );
+            sqlx::query(&create_fts_index)
+                .execute(&pool)
+                .await
+                .expect("Failed to create GIN index");
+        }
 
         Self { config, pool }
     }
@@ -113,17 +134,21 @@ impl PgvectorSink {
 
 #[async_trait]
 impl Sink for PgvectorSink {
+    fn supported_modes(&self) -> &[IndexMode] {
+        &[IndexMode::Vector, IndexMode::Keyword, IndexMode::Hybrid]
+    }
+
     async fn write(
         &self,
         batch: &[LogEntry],
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // build a batch insert using UNNEST for efficiency
+        let include_vectors = self.config.index_mode.needs_embeddings();
+
         let mut ids = Vec::with_capacity(batch.len());
         let mut timestamps = Vec::with_capacity(batch.len());
         let mut services = Vec::with_capacity(batch.len());
         let mut levels = Vec::with_capacity(batch.len());
         let mut messages = Vec::with_capacity(batch.len());
-        let mut embeddings: Vec<Vector> = Vec::with_capacity(batch.len());
 
         for entry in batch {
             ids.push(entry.id.clone());
@@ -131,25 +156,47 @@ impl Sink for PgvectorSink {
             services.push(entry.service.clone());
             levels.push(format!("{:?}", entry.level));
             messages.push(entry.message.clone());
-            embeddings.push(Vector::from(entry.embedding.clone()));
         }
 
-        let query = format!(
-            r#"INSERT INTO {} (id, timestamp, service, level, message, embedding)
-               SELECT * FROM UNNEST($1::text[], $2::timestamptz[], $3::text[], $4::text[], $5::text[], $6::vector[])
-               ON CONFLICT (id) DO NOTHING"#,
-            self.config.table_name,
-        );
+        if include_vectors {
+            let mut embeddings: Vec<Vector> = Vec::with_capacity(batch.len());
+            for entry in batch {
+                embeddings.push(Vector::from(entry.embedding.clone()));
+            }
 
-        sqlx::query(&query)
-            .bind(&ids)
-            .bind(&timestamps)
-            .bind(&services)
-            .bind(&levels)
-            .bind(&messages)
-            .bind(&embeddings)
-            .execute(&self.pool)
-            .await?;
+            let query = format!(
+                r#"INSERT INTO {} (id, timestamp, service, level, message, embedding)
+                   SELECT * FROM UNNEST($1::text[], $2::timestamptz[], $3::text[], $4::text[], $5::text[], $6::vector[])
+                   ON CONFLICT (id) DO NOTHING"#,
+                self.config.table_name,
+            );
+
+            sqlx::query(&query)
+                .bind(&ids)
+                .bind(&timestamps)
+                .bind(&services)
+                .bind(&levels)
+                .bind(&messages)
+                .bind(&embeddings)
+                .execute(&self.pool)
+                .await?;
+        } else {
+            let query = format!(
+                r#"INSERT INTO {} (id, timestamp, service, level, message)
+                   SELECT * FROM UNNEST($1::text[], $2::timestamptz[], $3::text[], $4::text[], $5::text[])
+                   ON CONFLICT (id) DO NOTHING"#,
+                self.config.table_name,
+            );
+
+            sqlx::query(&query)
+                .bind(&ids)
+                .bind(&timestamps)
+                .bind(&services)
+                .bind(&levels)
+                .bind(&messages)
+                .execute(&self.pool)
+                .await?;
+        }
 
         Ok(())
     }

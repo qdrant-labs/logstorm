@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::info;
 
+use crate::config::IndexMode;
 use crate::log_entry::LogEntry;
 use crate::sink::Sink;
 
@@ -44,6 +45,10 @@ impl DashboardSink {
 
 #[async_trait]
 impl Sink for DashboardSink {
+    fn supported_modes(&self) -> &[IndexMode] {
+        &[IndexMode::Vector, IndexMode::Keyword, IndexMode::Hybrid]
+    }
+
     async fn write(
         &self,
         batch: &[LogEntry],

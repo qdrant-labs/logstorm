@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use tracing::{debug, error, info, warn};
 
+use crate::config::IndexMode;
 use crate::log_entry::LogEntry;
 
 const DEFAULT_INDEX_NAME: &str = "logs";
@@ -18,6 +19,10 @@ pub mod pgvector;
 
 #[async_trait]
 pub trait Sink: Send + Sync {
+    /// Declares which index modes this sink implementation supports.
+    /// Used at startup to validate the configured index_mode.
+    fn supported_modes(&self) -> &[IndexMode];
+
     async fn write(
         &self,
         batch: &[LogEntry],
@@ -30,6 +35,10 @@ pub struct StdoutSink;
 
 #[async_trait]
 impl Sink for StdoutSink {
+    fn supported_modes(&self) -> &[IndexMode] {
+        &[IndexMode::Vector, IndexMode::Keyword, IndexMode::Hybrid]
+    }
+
     async fn write(
         &self,
         batch: &[LogEntry],

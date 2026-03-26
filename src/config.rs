@@ -9,6 +9,36 @@ use crate::sink::pgvector::PgvectorConfig;
 #[cfg(feature = "qdrant")]
 use crate::sink::qdrant::QdrantConfig;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum IndexMode {
+    Vector,
+    Keyword,
+    Hybrid,
+}
+
+impl Default for IndexMode {
+    fn default() -> Self {
+        Self::Hybrid
+    }
+}
+
+impl IndexMode {
+    pub fn needs_embeddings(&self) -> bool {
+        matches!(self, IndexMode::Vector | IndexMode::Hybrid)
+    }
+}
+
+impl std::fmt::Display for IndexMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IndexMode::Vector => write!(f, "vector"),
+            IndexMode::Keyword => write!(f, "keyword"),
+            IndexMode::Hybrid => write!(f, "hybrid"),
+        }
+    }
+}
+
 fn default_message_pool_size() -> usize {
     10_000
 }
@@ -43,6 +73,24 @@ pub enum SinkConfig {
     Pgvector(PgvectorConfig),
     #[cfg(feature = "dashboard")]
     Dashboard(DashboardConfig),
+}
+
+impl SinkConfig {
+    /// Returns the configured index mode for this sink, or None for sinks
+    /// that don't index data (stdout, dashboard).
+    pub fn index_mode(&self) -> Option<&IndexMode> {
+        match self {
+            SinkConfig::Stdout {} => None,
+            #[cfg(feature = "qdrant")]
+            SinkConfig::Qdrant(cfg) => Some(&cfg.index_mode),
+            #[cfg(feature = "elasticsearch")]
+            SinkConfig::ElasticSearch(cfg) => Some(&cfg.index_mode),
+            #[cfg(feature = "pgvector")]
+            SinkConfig::Pgvector(cfg) => Some(&cfg.index_mode),
+            #[cfg(feature = "dashboard")]
+            SinkConfig::Dashboard(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

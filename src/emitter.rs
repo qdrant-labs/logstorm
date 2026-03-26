@@ -11,11 +11,9 @@ use uuid::Uuid;
 use crate::config::{LogLevelWeights, ServiceConfig};
 use crate::log_entry::{LogEntry, LogLevel};
 
-// ---------------------------------------------------------------------------
-// Slot-based combinatorial message generation
-// 20 items per slot × 4 patterns × 20^4..20^5 = ~640K–12.8M unique messages
-// ---------------------------------------------------------------------------
 
+// slot-based combinatorial message generation
+// 20 items per slot * 4 patterns * 20^4..20^5 = ~640K–12.8M unique messages
 const COMPONENTS: &[&str] = &[
     "ConnectionPool",
     "QueryExecutor",
@@ -189,10 +187,6 @@ fn jitter_embedding(embedding: &[f32], rng: &mut impl Rng, scale: f32) -> Vec<f3
         })
         .collect()
 }
-
-// ---------------------------------------------------------------------------
-// Log generation + emission
-// ---------------------------------------------------------------------------
 
 pub fn generate_log(
     service: &ServiceConfig,

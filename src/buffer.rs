@@ -4,14 +4,14 @@ use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tracing::info;
 
-pub struct Buffer {
+pub struct LogBuffer {
     rx: mpsc::Receiver<LogEntry>,
     sinks: Vec<Box<dyn Sink>>,
     capacity: usize,
     flush_interval: Duration,
 }
 
-impl Buffer {
+impl LogBuffer {
     pub fn new(
         rx: mpsc::Receiver<LogEntry>,
         sinks: Vec<Box<dyn Sink>>,

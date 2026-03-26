@@ -7,7 +7,7 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::prelude::*;
 
-use logstorm::buffer::Buffer;
+use logstorm::buffer::LogBuffer;
 use logstorm::config::{EmitterConfig, SinkConfig};
 use logstorm::embedding::EmbeddingService;
 use logstorm::emitter::{build_message_pool, emit_logs};
@@ -134,6 +134,20 @@ async fn main() {
         config.buffer_size,
     );
 
+    // Determine if any sink needs embeddings
+    let needs_embeddings = config.sinks.iter().any(|s| {
+        s.index_mode()
+            .map(|m| m.needs_embeddings())
+            .unwrap_or(false)
+    });
+
+    // Log configured index modes
+    for sink_cfg in &config.sinks {
+        if let Some(mode) = sink_cfg.index_mode() {
+            info!("Sink index_mode: {}", mode);
+        }
+    }
+
     // Build message pool from combinatorial generator
     let pool = {
         use rand::SeedableRng;
@@ -142,21 +156,44 @@ async fn main() {
     };
     info!("Generated message pool of {} unique messages", pool.len());
 
-    // Embed all pool messages via OpenAI
-    let embedding_service = EmbeddingService::from_config(config.embedding.clone());
     let embedding_dim = config.embedding.dimensions as usize;
-    let embeddings = Arc::new(
-        embedding_service
-            .embed_all(&pool)
-            .await
-            .expect("Failed to generate embeddings"),
-    );
+
+    let embeddings = if needs_embeddings {
+        let embedding_service = EmbeddingService::from_config(config.embedding.clone());
+        info!("Embedding dimension: {}", embedding_dim);
+        Arc::new(
+            embedding_service
+                .embed_all(&pool)
+                .await
+                .expect("Failed to generate embeddings"),
+        )
+    } else {
+        info!("All sinks set to keyword search, skipping embedding generation");
+        let mut dummy = std::collections::HashMap::new();
+        for msg in &pool {
+            dummy.insert(msg.clone(), vec![]);
+        }
+        Arc::new(dummy)
+    };
     let pool = Arc::new(pool);
 
-    info!("Embedding dimension: {}", embedding_dim);
     let sinks = build_sinks(&config.sinks, embedding_dim).await;
+
+    // Validate that each sink's configured index_mode is supported
+    for (sink, sink_cfg) in sinks.iter().zip(config.sinks.iter()) {
+        if let Some(mode) = sink_cfg.index_mode() {
+            if !sink.supported_modes().contains(mode) {
+                panic!(
+                    "Sink does not support index_mode '{}'. Supported: {:?}",
+                    mode,
+                    sink.supported_modes(),
+                );
+            }
+        }
+    }
     let (tx, rx) = mpsc::channel(10_000);
 
+    // simulated microservices emit logs concurrently
     for service in &config.services {
         let tx = tx.clone();
         let service = service.clone();
@@ -168,7 +205,7 @@ async fn main() {
     }
     drop(tx);
 
-    let mut buffer = Buffer::new(
+    let mut buffer = LogBuffer::new(
         rx,
         sinks,
         config.buffer_size,
