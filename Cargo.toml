@@ -1,11 +1,11 @@
 [package]
 name = "logstorm"
-version = "0.1.1"
+version = "0.2.1"
 edition = "2024"
 description = "A log emitter that generates synthetic log messages and writes them to a vector database for benchmarking purposes."
 license = "MIT"
 authors = ["Nathan LeRoy <nleroy917@gmail.com>"]
-homepage = "https://github.com/nleroy/es-qdrant-log-demo"
+homepage = "https://github.com/qdrant-labs/logstorm"
 
 [dependencies]
 async-trait = "0.1"
