@@ -4,35 +4,35 @@ run_duration_secs: 0 # 0 means run indefinitely
 message_pool_size: 1000
 
 embedding:
-  api_key: ${OPENAI_API_KEY}
+  api_key: "${OPENAI_API_KEY}"
   model: text-embedding-3-small
   dimensions: 1536
 
 sinks:
   # - type: stdout
-  # - type: qdrant
-  #   url: ${QDRANT_URL}
-  #   api_key: ${QDRANT_API_KEY}
-  #   collection_name: logs
-  #   index_mode: hybrid  # vector | keyword | hybrid (default: hybrid)
+  - type: qdrant
+    url: "${QDRANT_URL}"
+    api_key: "${QDRANT_API_KEY}"
+    collection_name: logs
+    index_mode: keyword  # vector | keyword | hybrid (default: hybrid)
   # - type: elasticsearch
-  #   url: ${ELASTIC_URL}
-  #   user: ${ELASTIC_USER}
-  #   password: ${ELASTIC_PASSWORD}
+  #   url: "${ELASTIC_URL}"
+  #   user: "${ELASTIC_USER}"
+  #   password: "${ELASTIC_PASSWORD}"
   #   index_name: logs
   #   index_mode: keyword
-  - type: pgvector
-    host: ${PGVECTOR_HOST}
-    user: ${PGVECTOR_USER}
-    password: ${PGVECTOR_PASSWORD}
-    table_name: logs
-    index_mode: hybrid
-  - type: dashboard
-    port: 3000
+  # - type: pgvector
+  #   host: "${PGVECTOR_HOST}"
+  #   user: "${PGVECTOR_USER}"
+  #   password: "${PGVECTOR_PASSWORD}"
+  #   table_name: logs
+  #   index_mode: hybrid
+  # - type: dashboard
+  #   port: 3000
 
 services:
   - name: api-gateway
-    rate_per_sec: 30.0
+    rate_per_sec: 3.0
     level_weights:
       debug: 0.1
       info: 0.7
@@ -40,7 +40,7 @@ services:
       error: 0.05
 
   - name: auth-service
-    rate_per_sec: 10.0
+    rate_per_sec: 1.0
     level_weights:
       debug: 0.05
       info: 0.6
@@ -56,7 +56,7 @@ services:
       error: 0.2
 
   - name: user-service
-    rate_per_sec: 40.0
+    rate_per_sec: 4.0
     level_weights:
       debug: 0.1
       info: 0.65
