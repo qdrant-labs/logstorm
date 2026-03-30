@@ -26,7 +26,8 @@ sinks:
     user: "${OPENSEARCH_USER}"
     password: "${OPENSEARCH_PASSWORD}"
     index_name: logs
-    index_mode: keyword
+    index_mode: hybrid
+    skip_cert: true
   # - type: pgvector
   #   host: "${PGVECTOR_HOST}"
   #   user: "${PGVECTOR_USER}"
