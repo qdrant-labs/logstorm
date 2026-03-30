@@ -13,8 +13,10 @@ use logstorm::embedding::EmbeddingService;
 use logstorm::emitter::{build_message_pool, emit_logs};
 use logstorm::sink::{Sink, StdoutSink};
 
+const LOGSTORM_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Parser)]
-#[command(name = "logstorm", about = "Synthetic log emitter")]
+#[command(name = "logstorm", about = "Synthetic log emitter", version = LOGSTORM_VERSION)]
 struct Args {
     /// Path to config file
     #[arg(short, long, default_value = "config.yaml")]
@@ -87,6 +89,17 @@ async fn build_sinks(sink_configs: &[SinkConfig], embedding_dim: usize) -> Vec<B
                     es_cfg.index_name
                 );
                 sinks.push(Box::new(es_sink));
+            }
+            #[cfg(feature = "opensearch")]
+            SinkConfig::OpenSearch(os_cfg) => {
+                use logstorm::sink::opensearch::OpenSearchSink;
+                let os_sink =
+                    OpenSearchSink::from_config(os_cfg.to_owned(), embedding_dim).await;
+                info!(
+                    "OpenSearch sink configured for index '{}'",
+                    os_cfg.index_name
+                );
+                sinks.push(Box::new(os_sink));
             }
             #[cfg(feature = "pgvector")]
             SinkConfig::Pgvector(pg_cfg) => {

@@ -12,6 +12,8 @@ const SPARSE_EMBEDDING_NAME: &str = "bm25";
 pub mod dashboard;
 #[cfg(feature = "elasticsearch")]
 pub mod elasticsearch;
+#[cfg(feature = "opensearch")]
+pub mod opensearch;
 #[cfg(feature = "qdrant")]
 pub mod qdrant;
 #[cfg(feature = "pgvector")]

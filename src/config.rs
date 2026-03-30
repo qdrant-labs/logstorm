@@ -6,6 +6,8 @@ use crate::sink::dashboard::DashboardConfig;
 use crate::sink::elasticsearch::ElasticSearchConfig;
 #[cfg(feature = "pgvector")]
 use crate::sink::pgvector::PgvectorConfig;
+#[cfg(feature = "opensearch")]
+use crate::sink::opensearch::OpenSearchConfig;
 #[cfg(feature = "qdrant")]
 use crate::sink::qdrant::QdrantConfig;
 
@@ -69,6 +71,9 @@ pub enum SinkConfig {
     #[cfg(feature = "elasticsearch")]
     #[serde(rename = "elasticsearch")]
     ElasticSearch(ElasticSearchConfig),
+    #[cfg(feature = "opensearch")]
+    #[serde(rename = "opensearch")]
+    OpenSearch(OpenSearchConfig),
     #[cfg(feature = "pgvector")]
     Pgvector(PgvectorConfig),
     #[cfg(feature = "dashboard")]
@@ -85,6 +90,8 @@ impl SinkConfig {
             SinkConfig::Qdrant(cfg) => Some(&cfg.index_mode),
             #[cfg(feature = "elasticsearch")]
             SinkConfig::ElasticSearch(cfg) => Some(&cfg.index_mode),
+            #[cfg(feature = "opensearch")]
+            SinkConfig::OpenSearch(cfg) => Some(&cfg.index_mode),
             #[cfg(feature = "pgvector")]
             SinkConfig::Pgvector(cfg) => Some(&cfg.index_mode),
             #[cfg(feature = "dashboard")]
