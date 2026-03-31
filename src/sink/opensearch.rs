@@ -82,13 +82,13 @@ impl OpenSearchSink {
                         "method": {
                             "name": "hnsw",
                             "space_type": "cosinesimil",
-                            "engine": "nmslib",
+                            "engine": "lucene",
                         }
                     }),
                 );
             }
 
-            client
+            let response = client
                 .indices()
                 .create(opensearch::indices::IndicesCreateParts::Index(
                     &config.index_name,
@@ -102,6 +102,11 @@ impl OpenSearchSink {
                 .send()
                 .await
                 .expect("Failed to create index");
+                
+            if !response.status_code().is_success() {
+                let error_text = response.text().await.unwrap_or_default();
+                panic!("OpenSearch rejected the index creation! Error: {}", error_text);
+            }
         }
 
         Self { config, client }

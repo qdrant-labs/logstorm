@@ -13,17 +13,14 @@ use crate::sink::qdrant::QdrantConfig;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum IndexMode {
     Vector,
     Keyword,
+    #[default]
     Hybrid,
 }
 
-impl Default for IndexMode {
-    fn default() -> Self {
-        Self::Hybrid
-    }
-}
 
 impl IndexMode {
     pub fn needs_embeddings(&self) -> bool {
